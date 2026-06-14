@@ -1,32 +1,65 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
     <meta charset="utf-8">
     <title>Display</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@700&display=swap" rel="stylesheet">
     <style>
-        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; width: 100vw; height: 100vh; font-family: sans-serif; }
+        :root {
+            --bg-color: #000000;
+        }
+        body.theme-light {
+            --bg-color: #ffffff;
+        }
+
+        body, html { margin: 0; padding: 0; background: var(--bg-color); overflow: hidden; width: 100vw; height: 100vh; font-family: 'Poppins', sans-serif; transition: background 0.5s ease; }
         
         #clock-display { 
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: none; align-items: center; justify-content: center; 
-            font-size: 15vw; /* Etwas kleiner gemacht, damit die Sekunden gut hinpassen */
-            font-family: 'Orbitron', sans-serif; /* Die neue Schriftart */
-            background: #000; 
-            color: #ffffff; /* Weiße Schrift */
-            text-shadow: 0 0 20px rgba(255, 255, 255, 0.6); /* Cooler Glow-Effekt */
-            z-index: 10; 
+            font-size: 15vw; font-family: 'Orbitron', sans-serif;
+            background: var(--bg-color); color: #ffffff;
+            text-shadow: 0 0 20px rgba(100, 100, 100, 0.6); z-index: 10; 
+        }
+        body.theme-light #clock-display { color: #222; text-shadow: none; }
+
+        #alert-display {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
+            display: none; align-items: center; justify-content: center; 
+            font-size: 6vw; text-align: center;
+            background: #9C27B0; color: #ffffff; padding: 40px; box-sizing: border-box;
+            z-index: 12; animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { background-color: #7B1FA2; }
+            50% { background-color: #9C27B0; }
+            100% { background-color: #7B1FA2; }
+        }
+
+        #weather-widget {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.8); color: white;
+            padding: 15px 25px; border-radius: 12px;
+            font-size: 24px; font-weight: bold; text-align: center;
+            z-index: 20; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.2);
         }
         
-        #container { position: absolute; top: 0; left: 0; width: 100vw; height: 105vh; overflow: hidden; z-index: 5; }
-        iframe { width: 100%; height: 100%; border: none; }
+        #container { position: absolute; top: 0; left: 0; width: 100vw; height: 110vh; overflow: hidden; z-index: 5; }
+        iframe { width: 100%; height: 100%; border: none; margin-top: -45px; }
     </style>
 </head>
-<body>
+<body id="display-body" class="theme-dark">
 
     <div id="clock-display">00:00:00</div>
+    <div id="alert-display">Eigene Nachricht</div>
+    
+    <div id="weather-widget">
+        <span id="weather-city">Wien</span>: <span id="weather-temp">--°C</span>
+    </div>
+    
     <div id="container">
-        <iframe id="screen" src="https://docs.google.com/presentation/d/e/2PACX-1vQYSDiNWgoUySOYEu1qDTetowoaZc7hbNeWHeG8gMveqpJRoWj_qr9QNpmiwHGo1AR9n80qi9nXCbm8/pubembed?start=true&loop=true&delayms=10000" frameborder="0" allowfullscreen></iframe>
+        <iframe id="screen" src="about:blank" frameborder="0" allowfullscreen></iframe>
     </div>
 
     <script type="module">
@@ -46,20 +79,24 @@
         const db = getDatabase(initializeApp(firebaseConfig));
         const screenIframe = document.getElementById('screen');
         const clockDisplay = document.getElementById('clock-display');
+        const alertDisplay = document.getElementById('alert-display');
+        const weatherWidget = document.getElementById('weather-widget');
+        const weatherCity = document.getElementById('weather-city');
+        const weatherTemp = document.getElementById('weather-temp');
 
-        // HIER NEU: Zwingt die Box beim Start IMMER auf Werbung, egal was vorher in Firebase stand!
-        update(ref(db, 'status'), { mode: "werbung", endTime: null });
+        update(ref(db, 'status'), { mode: "werbung", endTime: null, msg: "" });
+
+        const baseLink = "https://docs.google.com/presentation/d/e/2PACX-1vQYSDiNWgoUySOYEu1qDTetowoaZc7hbNeWHeG8gMveqpJRoWj_qr9QNpmiwHGo1AR9n80qi9nXCbm8/pubembed?start=true&loop=true&delayms=10000";
 
         const urls = {
-            "werbung": "https://docs.google.com/presentation/d/e/2PACX-1vQYSDiNWgoUySOYEu1qDTetowoaZc7hbNeWHeG8gMveqpJRoWj_qr9QNpmiwHGo1AR9n80qi9nXCbm8/pubembed?start=true&loop=true&delayms=10000",
+            "werbung": baseLink,
             "pause3": "https://docs.google.com/presentation/d/e/2PACX-1vSmolPqTzwAAl2CM48Hv07kBn3aP-eIyBg8mdtcBfYMlSIpzt-APIAfCRUyqGDesB_Jmj0QjFlktwCT/pubembed?start=true&loop=true&delayms=10000",
             "pause5": "https://docs.google.com/presentation/d/e/2PACX-1vRxPndVI_HcwRfmu0cSBoBHbI5Wrd0OGW6HIsiAUqMCMF6GUMiX60RRsL3f4MXXiEt0J55q58unPhbY/pubembed?start=true&loop=true&delayms=3000"
         };
 
-        let currentStatus = { mode: "werbung", endTime: null };
+        let currentStatus = { mode: "werbung", endTime: null, msg: "" };
         let isShowingWarning = false;
 
-        // Sekündliche Überprüfung
         setInterval(() => {
             if (currentStatus.mode === "clock") {
                 clockDisplay.innerText = new Date().toLocaleTimeString('de-DE');
@@ -67,7 +104,6 @@
 
             if (currentStatus.mode === "custom_pause" && currentStatus.endTime) {
                 const timeLeft = currentStatus.endTime - Date.now();
-
                 if (timeLeft <= 300000 && timeLeft > 285000) {
                     if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"];
                     isShowingWarning = true;
@@ -77,48 +113,86 @@
                     isShowingWarning = true;
                 } 
                 else if (timeLeft <= 0) {
-                    update(ref(db, 'status'), { mode: "werbung", endTime: null });
+                    update(ref(db, 'status'), { mode: "werbung", endTime: null, msg: "" });
                 }
                 else {
-                    // HIER GEÄNDERT: Anstatt "about:blank" springen wir jetzt auf Werbung!
                     if (isShowingWarning || (screenIframe.src !== urls["werbung"] && screenIframe.src !== urls["pause5"] && screenIframe.src !== urls["pause3"])) {
                         screenIframe.src = urls["werbung"]; 
                         isShowingWarning = false;
                     }
                 }
             }
-        }, 1000);
-// Firebase-Daten empfangen
-onValue(ref(db, 'status'), (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
-    currentStatus = data;
 
-    if (data.mode === "clock") {
-        clockDisplay.style.display = "flex"; 
-        screenIframe.src = "about:blank";    
-    } 
-    else if (data.mode === "werbung") {
-        clockDisplay.style.display = "none"; 
-        if (screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"];
-    }
-    else if (data.mode === "pause5") {
-        clockDisplay.style.display = "none"; 
-        if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"];
-    }
-    else if (data.mode === "pause3") {
-        clockDisplay.style.display = "none"; 
-        if (screenIframe.src !== urls["pause3"]) screenIframe.src = urls["pause3"];
-    }
-    else if (data.mode === "custom_pause") {
-        clockDisplay.style.display = "none";
-        // NEU: Wenn wir im Timer-Modus sind, zeige Werbung, 
-        // WENN gerade KEINE Warnfolie aktiv ist.
-        if (!isShowingWarning && screenIframe.src !== urls["werbung"]) {
-            screenIframe.src = urls["werbung"];
-        }
-    }
-});
+            if (currentStatus.mode === "alert_text" && currentStatus.endTime) {
+                if (currentStatus.endTime - Date.now() <= 0) {
+                    update(ref(db, 'status'), { mode: "werbung", endTime: null, msg: "" });
+                }
+            }
+        }, 1000);
+
+        onValue(ref(db, 'status'), (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+            currentStatus = data;
+
+            clockDisplay.style.display = "none";
+            alertDisplay.style.display = "none";
+
+            if (data.mode === "blackout") {
+                screenIframe.src = "about:blank";
+                document.getElementById('display-body').style.background = "#000"; 
+            }
+            else if (data.mode === "clock") {
+                clockDisplay.style.display = "flex"; 
+                screenIframe.src = "about:blank";    
+            } 
+            else if (data.mode === "werbung") {
+                if (screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"];
+            }
+            else if (data.mode === "pause5") {
+                if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"];
+            }
+            else if (data.mode === "pause3") {
+                if (screenIframe.src !== urls["pause3"]) screenIframe.src = urls["pause3"];
+            }
+            else if (data.mode === "custom_pause") {
+                if (!isShowingWarning && screenIframe.src !== urls["werbung"]) {
+                    screenIframe.src = urls["werbung"];
+                }
+            }
+            else if (data.mode === "alert_text") {
+                alertDisplay.innerText = data.msg;
+                alertDisplay.style.display = "flex";
+                screenIframe.src = "about:blank";
+            }
+            
+            if (data.mode !== "blackout") {
+                document.getElementById('display-body').style.background = ""; 
+            }
+        });
+
+        onValue(ref(db, 'weather'), (snapshot) => {
+            const wData = snapshot.val();
+            if (wData && wData.show) {
+                weatherCity.innerText = wData.location;
+                fetch(`https://wttr.in/${wData.location}?format=%t`)
+                    .then(res => res.text())
+                    .then(temp => {
+                        weatherTemp.innerText = temp.trim();
+                        weatherWidget.style.display = "block";
+                    })
+                    .catch(() => { weatherTemp.innerText = "Fehler"; });
+            } else {
+                weatherWidget.style.display = "none";
+            }
+        });
+
+        onValue(ref(db, 'settings/theme'), (snapshot) => {
+            const theme = snapshot.val();
+            if (theme) {
+                document.getElementById('display-body').className = theme;
+            }
+        });
     </script>
 </body>
 </html>

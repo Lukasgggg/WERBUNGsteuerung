@@ -61,7 +61,6 @@
 
         // Sekündliche Überprüfung
         setInterval(() => {
-            // HIER NEU: toLocaleTimeString() ohne extra Vorgaben zeigt automatisch die Sekunden an!
             if (currentStatus.mode === "clock") {
                 clockDisplay.innerText = new Date().toLocaleTimeString('de-DE');
             }
@@ -81,8 +80,9 @@
                     update(ref(db, 'status'), { mode: "werbung", endTime: null });
                 }
                 else {
-                    if (isShowingWarning || (screenIframe.src !== "about:blank" && screenIframe.src !== urls["pause5"] && screenIframe.src !== urls["pause3"])) {
-                        screenIframe.src = "about:blank"; 
+                    // HIER GEÄNDERT: Anstatt "about:blank" springen wir jetzt auf Werbung!
+                    if (isShowingWarning || (screenIframe.src !== urls["werbung"] && screenIframe.src !== urls["pause5"] && screenIframe.src !== urls["pause3"])) {
+                        screenIframe.src = urls["werbung"]; 
                         isShowingWarning = false;
                     }
                 }

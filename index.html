@@ -3,37 +3,49 @@
 <head>
     <meta charset="utf-8">
     <title>Display</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@700&display=swap" rel="stylesheet">
+    <!-- NEU: Wir laden 10 coole und komplett unterschiedliche Schriftarten von Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@700&family=VT323&family=Pacifico&family=Press+Start+2P&family=Righteous&family=Creepster&family=Playfair+Display:wght@700&family=Bangers&family=Lobster&display=swap" rel="stylesheet">
+    
     <style>
-        :root {
-            --bg-color: #000000;
-        }
-        body.theme-light {
-            --bg-color: #ffffff;
-        }
+        :root { --bg-color: #000000; }
+        body.theme-light { --bg-color: #ffffff; }
 
         body, html { margin: 0; padding: 0; background: var(--bg-color); overflow: hidden; width: 100vw; height: 100vh; font-family: 'Poppins', sans-serif; transition: background 0.5s ease; }
         
+        @keyframes rainbowBg {
+            0% { background-color: #ff3333; }
+            20% { background-color: #ffff33; }
+            40% { background-color: #33ff33; }
+            60% { background-color: #33ffff; }
+            80% { background-color: #3333ff; }
+            100% { background-color: #ff3333; }
+        }
+        .bg-rainbow { animation: rainbowBg 15s linear infinite !important; }
+
         #clock-display { 
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: none; align-items: center; justify-content: center; 
-            font-size: 15vw; font-family: 'Orbitron', sans-serif;
-            background: var(--bg-color); color: #ffffff;
+            flex-direction: column; /* Damit das Datum über der Uhrzeit steht */
+            text-align: center;
+            background: transparent; color: #ffffff;
             text-shadow: 0 0 20px rgba(100, 100, 100, 0.6); z-index: 10; 
+            transition: font-family 0.3s ease; /* Weicher Übergang zwischen Schriften */
         }
         body.theme-light #clock-display { color: #222; text-shadow: none; }
 
         #alert-display {
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: none; align-items: center; justify-content: center; 
-            font-size: 6vw; text-align: center;
-            background: #9C27B0; color: #ffffff; padding: 40px; box-sizing: border-box;
-            z-index: 12; animation: pulse 2s infinite;
+            font-size: 7vw; text-align: center;
+            background: transparent; color: #ffffff; padding: 40px; box-sizing: border-box;
+            z-index: 12; 
+            text-shadow: 3px 3px 15px rgba(0,0,0,0.9), -3px -3px 15px rgba(0,0,0,0.9);
+            animation: textPulse 2s infinite;
         }
-        @keyframes pulse {
-            0% { background-color: #7B1FA2; }
-            50% { background-color: #9C27B0; }
-            100% { background-color: #7B1FA2; }
+        @keyframes textPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
         }
 
         #weather-widget {
@@ -44,14 +56,29 @@
             z-index: 20; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             border: 2px solid rgba(255,255,255,0.2);
         }
+
+        #brand-logo {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            width: 250px; 
+            z-index: 100;
+            display: none;
+            mix-blend-mode: multiply; 
+        }
         
-        #container { position: absolute; top: 0; left: 0; width: 100vw; height: 110vh; overflow: hidden; z-index: 5; }
+        #container { position: absolute; top: 0; left: 0; width: 100vw; height: 110vh; overflow: hidden; z-index: 5; transition: filter 0.5s ease; }
         iframe { width: 100%; height: 100%; border: none; margin-top: -45px; }
+
+        .blur-bg { filter: blur(15px); transform: scale(1.05); } 
     </style>
 </head>
 <body id="display-body" class="theme-dark">
 
-    <div id="clock-display">00:00:00</div>
+    <img id="brand-logo" src="edited-image.png" alt="Sender Logo">
+
+    <!-- Wird nun dynamisch über JavaScript mit Datum und Uhrzeit gefüllt -->
+    <div id="clock-display"></div>
     <div id="alert-display">Eigene Nachricht</div>
     
     <div id="weather-widget">
@@ -78,28 +105,58 @@
 
         const db = getDatabase(initializeApp(firebaseConfig));
         const screenIframe = document.getElementById('screen');
+        const container = document.getElementById('container');
         const clockDisplay = document.getElementById('clock-display');
         const alertDisplay = document.getElementById('alert-display');
         const weatherWidget = document.getElementById('weather-widget');
         const weatherCity = document.getElementById('weather-city');
         const weatherTemp = document.getElementById('weather-temp');
-
-        update(ref(db, 'status'), { mode: "werbung", endTime: null, msg: "" });
+        const displayBody = document.getElementById('display-body');
+        const brandLogo = document.getElementById('brand-logo');
 
         const baseLink = "https://docs.google.com/presentation/d/e/2PACX-1vQYSDiNWgoUySOYEu1qDTetowoaZc7hbNeWHeG8gMveqpJRoWj_qr9QNpmiwHGo1AR9n80qi9nXCbm8/pubembed?start=true&loop=true&delayms=10000";
-
         const urls = {
             "werbung": baseLink,
             "pause3": "https://docs.google.com/presentation/d/e/2PACX-1vSmolPqTzwAAl2CM48Hv07kBn3aP-eIyBg8mdtcBfYMlSIpzt-APIAfCRUyqGDesB_Jmj0QjFlktwCT/pubembed?start=true&loop=true&delayms=10000",
             "pause5": "https://docs.google.com/presentation/d/e/2PACX-1vRxPndVI_HcwRfmu0cSBoBHbI5Wrd0OGW6HIsiAUqMCMF6GUMiX60RRsL3f4MXXiEt0J55q58unPhbY/pubembed?start=true&loop=true&delayms=3000"
         };
 
-        let currentStatus = { mode: "werbung", endTime: null, msg: "" };
+        // NEU: Die 10 unterschiedlichen Schriftarten
+        const fontStyles = [
+            "'Orbitron', sans-serif",           // 0: Sci-Fi
+            "'Poppins', sans-serif",            // 1: Modern/Clean
+            "'VT323', monospace",               // 2: Retro Terminal
+            "'Pacifico', cursive",              // 3: Geschwungen/Handschrift
+            "'Press Start 2P', cursive",        // 4: 8-Bit Pixel Art
+            "'Righteous', cursive",             // 5: Cool/Plakat
+            "'Creepster', system-ui",           // 6: Horror
+            "'Playfair Display', serif",        // 7: Edel/Zeitung
+            "'Bangers', system-ui",             // 8: Comic
+            "'Lobster', sans-serif"             // 9: Elegant/Klassisch
+        ];
+
+        screenIframe.src = urls["werbung"];
+        update(ref(db, 'status'), { mode: "werbung", endTime: null, msg: "" });
+
+        let currentStatus = { mode: "werbung", clockFontIndex: 0, endTime: null, msg: "" };
         let isShowingWarning = false;
+        let currentBgSettings = { style: "color", color: "#000000" };
 
         setInterval(() => {
+            // NEU: Datum & Uhrzeit Berechnung
             if (currentStatus.mode === "clock") {
-                clockDisplay.innerText = new Date().toLocaleTimeString('de-DE');
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('de-DE'); // z.B. 19:25:31
+                const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const dateStr = now.toLocaleDateString('de-DE', dateOptions); // z.B. Sonntag, 14. Juni 2026
+
+                // Wir skalieren die "Press Start 2P" Font etwas kleiner, da sie sonst den Bildschirm sprengt
+                let timeSize = (currentStatus.clockFontIndex === 4) ? "8vw" : "15vw";
+
+                clockDisplay.innerHTML = `
+                    <div style="font-size: 3vw; margin-bottom: 2vh; opacity: 0.8;">${dateStr}</div>
+                    <div style="font-size: ${timeSize}; line-height: 1;">${timeStr}</div>
+                `;
             }
 
             if (currentStatus.mode === "custom_pause" && currentStatus.endTime) {
@@ -130,6 +187,40 @@
             }
         }, 1000);
 
+        function applyBackgroundEffects(mode) {
+            displayBody.classList.remove('bg-rainbow');
+            container.classList.remove('blur-bg');
+            displayBody.style.backgroundColor = "";
+
+            if (mode === "blackout") {
+                screenIframe.src = "about:blank";
+                displayBody.style.backgroundColor = "#000000";
+                container.style.display = "none";
+                return;
+            }
+
+            container.style.display = "block";
+
+            if (mode === "alert_text") {
+                if (currentBgSettings.style === "blur") {
+                    container.classList.add('blur-bg');
+                    if (screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"];
+                } 
+                else if (currentBgSettings.style === "color") {
+                    displayBody.style.backgroundColor = currentBgSettings.color;
+                    container.style.display = "none";
+                } 
+                else if (currentBgSettings.style === "rainbow") {
+                    displayBody.classList.add('bg-rainbow');
+                    container.style.display = "none";
+                }
+            } 
+            else if (mode === "clock") {
+                container.style.display = "none";
+                displayBody.style.backgroundColor = "#000000";
+            }
+        }
+
         onValue(ref(db, 'status'), (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
@@ -138,60 +229,63 @@
             clockDisplay.style.display = "none";
             alertDisplay.style.display = "none";
 
-            if (data.mode === "blackout") {
-                screenIframe.src = "about:blank";
-                document.getElementById('display-body').style.background = "#000"; 
-            }
-            else if (data.mode === "clock") {
+            if (data.mode === "blackout") applyBackgroundEffects("blackout");
+            else if (data.mode === "clock") { 
                 clockDisplay.style.display = "flex"; 
-                screenIframe.src = "about:blank";    
+                // NEU: Setze die gewählte Schriftart
+                clockDisplay.style.fontFamily = fontStyles[data.clockFontIndex || 0];
+                applyBackgroundEffects(data.mode); 
             } 
-            else if (data.mode === "werbung") {
-                if (screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"];
-            }
-            else if (data.mode === "pause5") {
-                if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"];
-            }
-            else if (data.mode === "pause3") {
-                if (screenIframe.src !== urls["pause3"]) screenIframe.src = urls["pause3"];
-            }
+            else if (data.mode === "werbung") { if (screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"]; applyBackgroundEffects(data.mode); }
+            else if (data.mode === "pause5") { if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"]; applyBackgroundEffects(data.mode); }
+            else if (data.mode === "pause3") { if (screenIframe.src !== urls["pause3"]) screenIframe.src = urls["pause3"]; applyBackgroundEffects(data.mode); }
             else if (data.mode === "custom_pause") {
-                if (!isShowingWarning && screenIframe.src !== urls["werbung"]) {
-                    screenIframe.src = urls["werbung"];
-                }
+                if (!isShowingWarning && screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"];
+                applyBackgroundEffects(data.mode);
             }
             else if (data.mode === "alert_text") {
                 alertDisplay.innerText = data.msg;
                 alertDisplay.style.display = "flex";
-                screenIframe.src = "about:blank";
-            }
-            
-            if (data.mode !== "blackout") {
-                document.getElementById('display-body').style.background = ""; 
+                applyBackgroundEffects(data.mode);
             }
         });
 
-        onValue(ref(db, 'weather'), (snapshot) => {
+        onValue(ref(db, 'overlay/showLogo'), (snapshot) => {
+            const show = snapshot.val();
+            if (show) { brandLogo.style.display = "block"; } 
+            else { brandLogo.style.display = "none"; }
+        });
+
+        onValue(ref(db, 'background'), (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                currentBgSettings = data;
+                applyBackgroundEffects(currentStatus.mode);
+            }
+        });
+
+        onValue(ref(db, 'weather'), async (snapshot) => {
             const wData = snapshot.val();
             if (wData && wData.show) {
                 weatherCity.innerText = wData.location;
-                fetch(`https://wttr.in/${wData.location}?format=%t`)
-                    .then(res => res.text())
-                    .then(temp => {
-                        weatherTemp.innerText = temp.trim();
-                        weatherWidget.style.display = "block";
-                    })
-                    .catch(() => { weatherTemp.innerText = "Fehler"; });
-            } else {
-                weatherWidget.style.display = "none";
-            }
+                weatherWidget.style.display = "block";
+                weatherTemp.innerText = "Lade...";
+                try {
+                    const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(wData.location)}&count=1`);
+                    const geoData = await geoRes.json();
+                    if (!geoData.results || geoData.results.length === 0) { weatherTemp.innerText = "?°C"; return; }
+                    const lat = geoData.results[0].latitude;
+                    const lon = geoData.results[0].longitude;
+                    const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                    const weatherData = await weatherRes.json();
+                    weatherTemp.innerText = Math.round(weatherData.current_weather.temperature) + "°C";
+                } catch (e) { weatherTemp.innerText = "Fehler"; }
+            } else { weatherWidget.style.display = "none"; }
         });
 
         onValue(ref(db, 'settings/theme'), (snapshot) => {
             const theme = snapshot.val();
-            if (theme) {
-                document.getElementById('display-body').className = theme;
-            }
+            if (theme) { document.getElementById('display-body').className = theme; }
         });
     </script>
 </body>

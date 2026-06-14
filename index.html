@@ -88,33 +88,37 @@
                 }
             }
         }, 1000);
+// Firebase-Daten empfangen
+onValue(ref(db, 'status'), (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+    currentStatus = data;
 
-        // Firebase-Daten empfangen
-        onValue(ref(db, 'status'), (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
-            currentStatus = data;
-
-            if (data.mode === "clock") {
-                clockDisplay.style.display = "flex"; 
-                screenIframe.src = "about:blank";    
-            } 
-            else if (data.mode === "werbung") {
-                clockDisplay.style.display = "none"; 
-                if (screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"];
-            }
-            else if (data.mode === "pause5") {
-                clockDisplay.style.display = "none"; 
-                if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"];
-            }
-            else if (data.mode === "pause3") {
-                clockDisplay.style.display = "none"; 
-                if (screenIframe.src !== urls["pause3"]) screenIframe.src = urls["pause3"];
-            }
-            else if (data.mode === "custom_pause") {
-                clockDisplay.style.display = "none";
-            }
-        });
+    if (data.mode === "clock") {
+        clockDisplay.style.display = "flex"; 
+        screenIframe.src = "about:blank";    
+    } 
+    else if (data.mode === "werbung") {
+        clockDisplay.style.display = "none"; 
+        if (screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"];
+    }
+    else if (data.mode === "pause5") {
+        clockDisplay.style.display = "none"; 
+        if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"];
+    }
+    else if (data.mode === "pause3") {
+        clockDisplay.style.display = "none"; 
+        if (screenIframe.src !== urls["pause3"]) screenIframe.src = urls["pause3"];
+    }
+    else if (data.mode === "custom_pause") {
+        clockDisplay.style.display = "none";
+        // NEU: Wenn wir im Timer-Modus sind, zeige Werbung, 
+        // WENN gerade KEINE Warnfolie aktiv ist.
+        if (!isShowingWarning && screenIframe.src !== urls["werbung"]) {
+            screenIframe.src = urls["werbung"];
+        }
+    }
+});
     </script>
 </body>
 </html>

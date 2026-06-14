@@ -1,35 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="utf-8">
+    <title>Display</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet">
     <style>
-        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; width: 100vw; height: 100vh; }
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; width: 100vw; height: 100vh; font-family: sans-serif; }
         
-        /* Der Iframe-Container: Er ist etwas größer als der Bildschirm, um die Leiste zu verstecken */
-        #container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 105vh; /* Wir machen ihn 5% höher, um die Leiste unten abzuschneiden */
-            overflow: hidden;
+        #clock-display { 
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
+            display: none; align-items: center; justify-content: center; 
+            font-size: 15vw; /* Etwas kleiner gemacht, damit die Sekunden gut hinpassen */
+            font-family: 'Orbitron', sans-serif; /* Die neue Schriftart */
+            background: #000; 
+            color: #ffffff; /* Weiße Schrift */
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.6); /* Cooler Glow-Effekt */
+            z-index: 10; 
         }
-
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
+        
+        #container { position: absolute; top: 0; left: 0; width: 100vw; height: 105vh; overflow: hidden; z-index: 5; }
+        iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
 
+    <div id="clock-display">00:00:00</div>
     <div id="container">
-        <iframe id="screen" src="about:blank" frameborder="0" allowfullscreen></iframe>
+        <iframe id="screen" src="https://docs.google.com/presentation/d/e/2PACX-1vQYSDiNWgoUySOYEu1qDTetowoaZc7hbNeWHeG8gMveqpJRoWj_qr9QNpmiwHGo1AR9n80qi9nXCbm8/pubembed?start=true&loop=true&delayms=10000" frameborder="0" allowfullscreen></iframe>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDLvfW6NyXcxAPYakErDOMNiIj9Iii6PO8",
@@ -41,9 +43,12 @@
             appId: "1:630825517269:web:44cf935bee6c1074c2e25c"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+        const db = getDatabase(initializeApp(firebaseConfig));
         const screenIframe = document.getElementById('screen');
+        const clockDisplay = document.getElementById('clock-display');
+
+        // HIER NEU: Zwingt die Box beim Start IMMER auf Werbung, egal was vorher in Firebase stand!
+        update(ref(db, 'status'), { mode: "werbung", endTime: null });
 
         const urls = {
             "werbung": "https://docs.google.com/presentation/d/e/2PACX-1vQYSDiNWgoUySOYEu1qDTetowoaZc7hbNeWHeG8gMveqpJRoWj_qr9QNpmiwHGo1AR9n80qi9nXCbm8/pubembed?start=true&loop=true&delayms=10000",
@@ -51,13 +56,63 @@
             "pause5": "https://docs.google.com/presentation/d/e/2PACX-1vRxPndVI_HcwRfmu0cSBoBHbI5Wrd0OGW6HIsiAUqMCMF6GUMiX60RRsL3f4MXXiEt0J55q58unPhbY/pubembed?start=true&loop=true&delayms=3000"
         };
 
+        let currentStatus = { mode: "werbung", endTime: null };
+        let isShowingWarning = false;
+
+        // Sekündliche Überprüfung
+        setInterval(() => {
+            // HIER NEU: toLocaleTimeString() ohne extra Vorgaben zeigt automatisch die Sekunden an!
+            if (currentStatus.mode === "clock") {
+                clockDisplay.innerText = new Date().toLocaleTimeString('de-DE');
+            }
+
+            if (currentStatus.mode === "custom_pause" && currentStatus.endTime) {
+                const timeLeft = currentStatus.endTime - Date.now();
+
+                if (timeLeft <= 300000 && timeLeft > 285000) {
+                    if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"];
+                    isShowingWarning = true;
+                } 
+                else if (timeLeft <= 180000 && timeLeft > 165000) {
+                    if (screenIframe.src !== urls["pause3"]) screenIframe.src = urls["pause3"];
+                    isShowingWarning = true;
+                } 
+                else if (timeLeft <= 0) {
+                    update(ref(db, 'status'), { mode: "werbung", endTime: null });
+                }
+                else {
+                    if (isShowingWarning || (screenIframe.src !== "about:blank" && screenIframe.src !== urls["pause5"] && screenIframe.src !== urls["pause3"])) {
+                        screenIframe.src = "about:blank"; 
+                        isShowingWarning = false;
+                    }
+                }
+            }
+        }, 1000);
+
+        // Firebase-Daten empfangen
         onValue(ref(db, 'status'), (snapshot) => {
-            const status = snapshot.val();
-            const targetUrl = urls[status] || urls["werbung"];
-            
-            // Nur aktualisieren, wenn sich der Link wirklich geändert hat (verhindert Flackern)
-            if (screenIframe.src !== targetUrl) {
-                screenIframe.src = targetUrl;
+            const data = snapshot.val();
+            if (!data) return;
+            currentStatus = data;
+
+            if (data.mode === "clock") {
+                clockDisplay.style.display = "flex"; 
+                screenIframe.src = "about:blank";    
+            } 
+            else if (data.mode === "werbung") {
+                clockDisplay.style.display = "none"; 
+                if (screenIframe.src !== urls["werbung"]) screenIframe.src = urls["werbung"];
+            }
+            else if (data.mode === "pause5") {
+                clockDisplay.style.display = "none"; 
+                if (screenIframe.src !== urls["pause5"]) screenIframe.src = urls["pause5"];
+            }
+            else if (data.mode === "pause3") {
+                clockDisplay.style.display = "none"; 
+                if (screenIframe.src !== urls["pause3"]) screenIframe.src = urls["pause3"];
+            }
+            else if (data.mode === "custom_pause") {
+                clockDisplay.style.display = "none";
             }
         });
     </script>

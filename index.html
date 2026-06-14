@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <title>Display</title>
+    <!-- NEU: Wir laden 10 coole und komplett unterschiedliche Schriftarten von Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@700&family=VT323&family=Pacifico&family=Press+Start+2P&family=Righteous&family=Creepster&family=Playfair+Display:wght@700&family=Bangers&family=Lobster&display=swap" rel="stylesheet">
     
     <style>
@@ -24,11 +25,11 @@
         #clock-display { 
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: none; align-items: center; justify-content: center; 
-            flex-direction: column; 
+            flex-direction: column; /* Damit das Datum über der Uhrzeit steht */
             text-align: center;
             background: transparent; color: #ffffff;
             text-shadow: 0 0 20px rgba(100, 100, 100, 0.6); z-index: 10; 
-            transition: font-family 0.3s ease; 
+            transition: font-family 0.3s ease; /* Weicher Übergang zwischen Schriften */
         }
         body.theme-light #clock-display { color: #222; text-shadow: none; }
 
@@ -74,8 +75,9 @@
 </head>
 <body id="display-body" class="theme-dark">
 
-    <img id="brand-logo" src="HIER_DEN_KOPIERTEN_CODE_EINFÜGEN" alt="Sender Logo">
+    <img id="brand-logo" src="edited-image.png" alt="Sender Logo">
 
+    <!-- Wird nun dynamisch über JavaScript mit Datum und Uhrzeit gefüllt -->
     <div id="clock-display"></div>
     <div id="alert-display">Eigene Nachricht</div>
     
@@ -119,17 +121,18 @@
             "pause5": "https://docs.google.com/presentation/d/e/2PACX-1vRxPndVI_HcwRfmu0cSBoBHbI5Wrd0OGW6HIsiAUqMCMF6GUMiX60RRsL3f4MXXiEt0J55q58unPhbY/pubembed?start=true&loop=true&delayms=3000"
         };
 
+        // NEU: Die 10 unterschiedlichen Schriftarten
         const fontStyles = [
-            "'Orbitron', sans-serif",
-            "'Poppins', sans-serif",
-            "'VT323', monospace",
-            "'Pacifico', cursive",
-            "'Press Start 2P', cursive",
-            "'Righteous', cursive",
-            "'Creepster', system-ui",
-            "'Playfair Display', serif",
-            "'Bangers', system-ui",
-            "'Lobster', sans-serif"
+            "'Orbitron', sans-serif",           // 0: Sci-Fi
+            "'Poppins', sans-serif",            // 1: Modern/Clean
+            "'VT323', monospace",               // 2: Retro Terminal
+            "'Pacifico', cursive",              // 3: Geschwungen/Handschrift
+            "'Press Start 2P', cursive",        // 4: 8-Bit Pixel Art
+            "'Righteous', cursive",             // 5: Cool/Plakat
+            "'Creepster', system-ui",           // 6: Horror
+            "'Playfair Display', serif",        // 7: Edel/Zeitung
+            "'Bangers', system-ui",             // 8: Comic
+            "'Lobster', sans-serif"             // 9: Elegant/Klassisch
         ];
 
         screenIframe.src = urls["werbung"];
@@ -140,12 +143,14 @@
         let currentBgSettings = { style: "color", color: "#000000" };
 
         setInterval(() => {
+            // NEU: Datum & Uhrzeit Berechnung
             if (currentStatus.mode === "clock") {
                 const now = new Date();
-                const timeStr = now.toLocaleTimeString('de-DE');
+                const timeStr = now.toLocaleTimeString('de-DE'); // z.B. 19:25:31
                 const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                const dateStr = now.toLocaleDateString('de-DE', dateOptions);
+                const dateStr = now.toLocaleDateString('de-DE', dateOptions); // z.B. Sonntag, 14. Juni 2026
 
+                // Wir skalieren die "Press Start 2P" Font etwas kleiner, da sie sonst den Bildschirm sprengt
                 let timeSize = (currentStatus.clockFontIndex === 4) ? "8vw" : "15vw";
 
                 clockDisplay.innerHTML = `
@@ -227,6 +232,7 @@
             if (data.mode === "blackout") applyBackgroundEffects("blackout");
             else if (data.mode === "clock") { 
                 clockDisplay.style.display = "flex"; 
+                // NEU: Setze die gewählte Schriftart
                 clockDisplay.style.fontFamily = fontStyles[data.clockFontIndex || 0];
                 applyBackgroundEffects(data.mode); 
             } 

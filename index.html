@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; width: 100vw; height: 100vh; }
+        
+        /* Der Iframe-Container: Er ist etwas größer als der Bildschirm, um die Leiste zu verstecken */
+        #container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 105vh; /* Wir machen ihn 5% höher, um die Leiste unten abzuschneiden */
+            overflow: hidden;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <iframe id="screen" src="about:blank" frameborder="0" allowfullscreen></iframe>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDLvfW6NyXcxAPYakErDOMNiIj9Iii6PO8",
+            authDomain: "werbungfersteuern.firebaseapp.com",
+            databaseURL: "https://werbungfersteuern-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "werbungfersteuern",
+            storageBucket: "werbungfersteuern.firebasestorage.app",
+            messagingSenderId: "630825517269",
+            appId: "1:630825517269:web:44cf935bee6c1074c2e25c"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const screenIframe = document.getElementById('screen');
+
+        const urls = {
+            "werbung": "https://docs.google.com/presentation/d/e/2PACX-1vQYSDiNWgoUySOYEu1qDTetowoaZc7hbNeWHeG8gMveqpJRoWj_qr9QNpmiwHGo1AR9n80qi9nXCbm8/pubembed?start=true&loop=true&delayms=10000",
+            "pause3": "https://docs.google.com/presentation/d/e/2PACX-1vSmolPqTzwAAl2CM48Hv07kBn3aP-eIyBg8mdtcBfYMlSIpzt-APIAfCRUyqGDesB_Jmj0QjFlktwCT/pubembed?start=true&loop=true&delayms=10000",
+            "pause5": "https://docs.google.com/presentation/d/e/2PACX-1vRxPndVI_HcwRfmu0cSBoBHbI5Wrd0OGW6HIsiAUqMCMF6GUMiX60RRsL3f4MXXiEt0J55q58unPhbY/pubembed?start=true&loop=true&delayms=3000"
+        };
+
+        onValue(ref(db, 'status'), (snapshot) => {
+            const status = snapshot.val();
+            const targetUrl = urls[status] || urls["werbung"];
+            
+            // Nur aktualisieren, wenn sich der Link wirklich geändert hat (verhindert Flackern)
+            if (screenIframe.src !== targetUrl) {
+                screenIframe.src = targetUrl;
+            }
+        });
+    </script>
+</body>
+</html>
